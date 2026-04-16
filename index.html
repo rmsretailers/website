@@ -25,6 +25,7 @@
       width: min(1100px, 96vw);
       height: min(720px, 86vh);
       margin: 2vh 0;
+      position: relative;
     }
 
     #book {
@@ -47,15 +48,51 @@
       position: fixed;
       top: 12px;
       left: 12px;
-      right: 12px;
+      right: 140px;
       color: #ddd;
       font-size: 14px;
-      opacity: 0.9;
+      opacity: 0.95;
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #fullscreenBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10000;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      border: 1px solid #666;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    #fullscreenBtn:hover {
+      background: rgba(0, 0, 0, 0.92);
+    }
+
+    #fullscreenBtn:active {
+      transform: translateY(1px);
+    }
+
+    /* When in fullscreen, allow the book to use the screen height more naturally */
+    :fullscreen #book-wrap {
+      width: min(1400px, 98vw);
+      height: min(900px, 92vh);
+      margin: 2vh auto;
     }
   </style>
 </head>
 
 <body>
+  <button id="fullscreenBtn" title="Fullscreen">⛶</button>
+
   <div id="book-wrap">
     <div id="book"></div>
   </div>
@@ -76,10 +113,40 @@
 
     const container = document.getElementById("book");
     const loadingEl = document.getElementById("loading");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
 
     function setLoading(text) {
       if (loadingEl) loadingEl.textContent = text;
     }
+
+    function setFullscreenButtonState() {
+      if (!fullscreenBtn) return;
+      const isFs = !!document.fullscreenElement;
+      fullscreenBtn.textContent = isFs ? "×" : "⛶";
+      fullscreenBtn.title = isFs ? "Exit fullscreen" : "Fullscreen";
+    }
+
+    function toggleFullscreen() {
+      const elem = document.documentElement;
+
+      if (!document.fullscreenElement) {
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          elem.msRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    fullscreenBtn.addEventListener("click", toggleFullscreen);
+    document.addEventListener("fullscreenchange", setFullscreenButtonState);
+    setFullscreenButtonState();
 
     async function pdfToImages(pdfUrl, scale = 1.4, maxPages = 120) {
       const loadingTask = pdfjsLib.getDocument(pdfUrl);
@@ -111,7 +178,6 @@
     (async () => {
       try {
         setLoading("Loading PDF...");
-
         const images = await pdfToImages(PDF_URL);
 
         setLoading("Building flipbook...");
@@ -131,7 +197,7 @@
         if (loadingEl) loadingEl.style.display = "none";
       } catch (err) {
         console.error(err);
-        setLoading("Error loading flipbook. Check console for details.");
+        setLoading("Error loading flipbook. Open dev tools console for details.");
       }
     })();
   </script>
