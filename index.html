@@ -14,17 +14,15 @@
     body {
       margin: 0;
       background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      min-height: 100vh;
       font-family: Arial, sans-serif;
+      overflow: hidden;
     }
 
     #book-wrap {
       width: min(1100px, 96vw);
       height: min(720px, 86vh);
-      margin: 60px 0 0;
+      margin: 70px auto 0;
+      position: relative;
     }
 
     #book {
@@ -32,41 +30,97 @@
       height: 100%;
     }
 
-    .loading {
+    /* ---------- RMS CONTROL BAR ---------- */
+
+    #controls {
       position: fixed;
       top: 12px;
-      left: 12px;
-      color: #ddd;
-      font-size: 14px;
-      z-index: 1000;
+      right: 12px;
+      z-index: 10000;
+      display: flex;
+      gap: 8px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 6px 8px;
+      align-items: center;
     }
 
-    #fullscreenBtn {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 10000;
-      background: rgba(0,0,0,0.8);
+    #controls button {
+      background: transparent;
+      border: 1px solid #777;
       color: #fff;
-      border: 1px solid #666;
-      padding: 8px 10px;
       cursor: pointer;
+      padding: 6px 10px;
+      font-size: 13px;
       border-radius: 4px;
-      font-size: 14px;
+      white-space: nowrap;
     }
+
+    #controls button:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    #fullscreenBtn span {
+      margin-left: 6px;
+      font-size: 12px;
+      opacity: 0.85;
+    }
+
+    /* ---------- RMS LOGO ---------- */
+
+    #rms-logo {
+      position: fixed;
+      bottom: 14px;
+      right: 14px;
+      z-index: 9000;
+      opacity: 0.85;
+    }
+
+    #rms-logo img {
+      height: 42px;
+      width: auto;
+    }
+
+    /* ---------- MOBILE ---------- */
 
     @media (max-width: 820px) {
       #book-wrap {
         width: 98vw;
         height: 88vh;
+        margin-top: 64px;
+      }
+
+      #controls {
+        padding: 8px;
+      }
+
+      #controls button span {
+        display: none;
+      }
+
+      #rms-logo img {
+        height: 34px;
       }
     }
   </style>
 </head>
 
 <body>
-  <button id="fullscreenBtn">⛶</button>
-  <div id="loading" class="loading">Loading flipbook…</div>
+
+  <!-- RMS CONTROLS -->
+  <div id="controls">
+    <button id="fullscreenBtn">
+      ⛶ <span>Enter Fullscreen</span>
+    </button>
+    <button id="zoomOut">−</button>
+    <button id="zoomIn">+</button>
+  </div>
+
+  <!-- RMS LOGO -->
+  <div id="rms-logo">
+    <img src="https://rmsretailers.com/wp-content/uploads/2024/01/RMS-Logo-White.png" alt="RMS Retailers">
+  </div>
 
   <div id="book-wrap">
     <div id="book"></div>
@@ -80,12 +134,24 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://unpkg.com/pdfjs-dist@5.0.375/build/pdf.worker.min.mjs";
 
-    const bookEl = document.getElementById("book");
-    const loadingEl = document.getElementById("loading");
-    const fullscreenBtn = document.getElementById("fullscreenBtn");
-
     const PDF_URL =
       "https://rmsretailers.com/wp-content/uploads/2026/04/RMS-Management-Portfolio-2026-FINAL.pdf";
+
+    const bookEl = document.getElementById("book");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const zoomInBtn = document.getElementById("zoomIn");
+    const zoomOutBtn = document.getElementById("zoomOut");
+
+    let pageFlip;
+    let zoomScale = 1.25;
+
+    function updateFullscreenLabel() {
+      const span = fullscreenBtn.querySelector("span");
+      if (!span) return;
+      span.textContent = document.fullscreenElement
+        ? "Exit Fullscreen"
+        : "Enter Fullscreen";
+    }
 
     fullscreenBtn.onclick = () => {
       if (!document.fullscreenElement) {
@@ -95,26 +161,38 @@
       }
     };
 
+    document.addEventListener("fullscreenchange", updateFullscreenLabel);
+
+    zoomInBtn.onclick = () => {
+      zoomScale = Math.min(1.8, zoomScale + 0.1);
+      bookEl.style.transform = `scale(${zoomScale})`;
+    };
+
+    zoomOutBtn.onclick = () => {
+      zoomScale = Math.max(0.8, zoomScale - 0.1);
+      bookEl.style.transform = `scale(${zoomScale})`;
+    };
+
     async function buildFlipbook() {
       const pdf = await pdfjsLib.getDocument(PDF_URL).promise;
-      const pages = [];
-      const scale = window.innerWidth < 820 ? 1.1 : 1.4;
-      const maxPages = window.innerWidth < 820 ? 80 : 140;
+      const images = [];
+
+      const isMobile = window.innerWidth < 820;
+      const scale = isMobile ? 1.1 : 1.4;
+      const maxPages = isMobile ? 80 : 140;
 
       for (let i = 1; i <= Math.min(pdf.numPages, maxPages); i++) {
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale });
-
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-
         await page.render({ canvasContext: ctx, viewport }).promise;
-        pages.push(canvas.toDataURL("image/jpeg", 0.92));
+        images.push(canvas.toDataURL("image/jpeg", 0.92));
       }
 
-      const flipbook = new St.PageFlip(bookEl, {
+      pageFlip = new St.PageFlip(bookEl, {
         width: 550,
         height: 720,
         size: "stretch",
@@ -123,12 +201,13 @@
         mobileScrollSupport: true
       });
 
-      flipbook.loadFromImages(pages);
-      loadingEl.remove();
+      pageFlip.loadFromImages(images);
     }
 
     buildFlipbook();
+    updateFullscreenLabel();
   </script>
+
 </body>
 </html>
 ``
