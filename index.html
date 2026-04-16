@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RMS Portfolio Flipbook</title>
 
-  <!-- Page Flip CSS -->
+  <!-- PageFlip styles -->
   <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/src/Style/stPageFlip.min.css"
@@ -31,7 +31,7 @@
       transform-origin: center center;
     }
 
-    /* ===== LOADING OVERLAY ===== */
+    /* ===== Loading Overlay ===== */
     #loading-overlay {
       position: fixed;
       inset: 0;
@@ -67,7 +67,7 @@
       text-align: center;
     }
 
-    /* ===== CONTROLS ===== */
+    /* ===== Controls ===== */
     #controls {
       position: fixed;
       top: 12px;
@@ -94,7 +94,7 @@
     }
 
     #controls button:hover {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.15);
     }
 
     #fullscreenBtn span {
@@ -103,13 +103,13 @@
       opacity: 0.85;
     }
 
-    /* ===== RMS LOGO ===== */
+    /* ===== RMS Logo ===== */
     #rms-logo {
       position: fixed;
       bottom: 14px;
       right: 14px;
       z-index: 14000;
-      opacity: 0.8;
+      opacity: 0.85;
     }
 
     #rms-logo img {
@@ -137,7 +137,7 @@
 
 <body>
 
-  <!-- LOADING -->
+  <!-- Loading Overlay -->
   <div id="loading-overlay">
     <div>
       <div class="spinner"></div>
@@ -145,29 +145,30 @@
     </div>
   </div>
 
-  <!-- CONTROLS -->
+  <!-- Controls -->
   <div id="controls">
     <button id="fullscreenBtn">⛶ <span>Enter Fullscreen</span></button>
     <button id="zoomOut">−</button>
     <button id="zoomIn">+</button>
   </div>
 
-  <!-- RMS LOGO -->
+  <!-- RMS Logo -->
   <div id="rms-logo">
     <img
-      src="https://rmsretailers.com/wp-content/uploads/2024/01/RMS-Logo-White.png"
+      src="https://rmsretailers.com/wp-content/uploads/2025/05/cropped-Heading-1.png"
       alt="RMS Retailers"
     />
   </div>
 
+  <!-- Flipbook -->
   <div id="book-wrap">
     <div id="book"></div>
   </div>
 
-  <!-- Page Flip JS -->
+  <!-- PageFlip JS -->
   <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
 
-  <!-- PDF + App -->
+  <!-- PDF + App Logic -->
   <script type="module">
     import * as pdfjsLib from "https://unpkg.com/pdfjs-dist@5.0.375/build/pdf.min.mjs";
 
@@ -178,10 +179,10 @@
       "https://rmsretailers.com/wp-content/uploads/2026/04/RMS-Management-Portfolio-2026-FINAL.pdf";
 
     const bookEl = document.getElementById("book");
+    const loader = document.getElementById("loading-overlay");
     const fullscreenBtn = document.getElementById("fullscreenBtn");
     const zoomInBtn = document.getElementById("zoomIn");
     const zoomOutBtn = document.getElementById("zoomOut");
-    const loader = document.getElementById("loading-overlay");
 
     let zoom = 1.25;
 
@@ -212,24 +213,24 @@
       const pdf = await pdfjsLib.getDocument(PDF_URL).promise;
       const pages = [];
 
-      const mobile = window.innerWidth < 820;
-      const scale = mobile ? 1.1 : 1.4;
-      const maxPages = mobile ? 80 : 140;
+      const isMobile = window.innerWidth < 820;
+      const scale = isMobile ? 1.1 : 1.4;
+      const maxPages = isMobile ? 80 : 140;
 
       for (let i = 1; i <= Math.min(pdf.numPages, maxPages); i++) {
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale });
+
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-
         canvas.width = viewport.width;
         canvas.height = viewport.height;
-        await page.render({ canvasContext: ctx, viewport }).promise;
 
+        await page.render({ canvasContext: ctx, viewport }).promise;
         pages.push(canvas.toDataURL("image/jpeg", 0.92));
       }
 
-      const flip = new St.PageFlip(bookEl, {
+      const flipbook = new St.PageFlip(bookEl, {
         width: 550,
         height: 720,
         size: "stretch",
@@ -238,7 +239,7 @@
         mobileScrollSupport: true
       });
 
-      flip.loadFromImages(pages);
+      flipbook.loadFromImages(pages);
       loader.classList.add("hidden");
     }
 
